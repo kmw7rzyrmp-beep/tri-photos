@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tri Photos</title>
 <style>
   :root{--bg:#0f1115;--panel:#181b22;--line:#2a2f3a;--txt:#e9ecf1;--mut:#8b93a3;--red:#ef4444;--green:#22c55e;--gold:#f5b301;--blue:#3b82f6}
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  html,body{margin:0;height:100%;height:100dvh;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--txt);border-radius:10px;padding:10px 16px}
   button:hover{border-color:#3d4452}
   button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
@@ -30,7 +30,7 @@
   .bar{height:4px;background:var(--line);border-radius:4px;overflow:hidden;flex:1;max-width:320px}
   .bar i{display:block;height:100%;background:var(--blue);width:0}
   .count{color:var(--mut);font-size:13px;white-space:nowrap}
-  #stage{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:pan-y}
+  #stage{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none}
   #card{max-width:100%;max-height:100%;display:flex;align-items:center;justify-content:center;transition:transform .2s,opacity .2s;position:relative}
   #card img,#card video{max-width:calc(100vw - 32px);max-height:calc(100vh - 200px);border-radius:10px;display:block;user-select:none;-webkit-user-drag:none}
   .noprev{padding:60px 40px;border:1px dashed var(--line);border-radius:12px;color:var(--mut)}
@@ -66,6 +66,26 @@
   .help.on{display:flex}
   .help div{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:420px}
   kbd{background:#000;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
+  @media (max-width:700px){
+    #home{padding:20px 16px}
+    #home h1{font-size:28px}
+    #home .opts{flex-direction:column;gap:10px;align-items:center}
+    #btnPick{width:100%;max-width:340px;padding:16px;font-size:17px}
+    header{padding:8px 10px;gap:8px;padding-top:calc(8px + env(safe-area-inset-top))}
+    header button{padding:10px 14px}
+    .bar{max-width:none}
+    #card img,#card video{max-width:calc(100vw - 16px);max-height:calc(100dvh - 210px)}
+    #meta{font-size:12px}
+    .actions{gap:6px;padding:8px 8px calc(12px + env(safe-area-inset-bottom));flex-wrap:nowrap}
+    .actions button{flex:1;min-width:0;padding:16px 4px;font-size:15px}
+    .actions .k{display:none}
+    .stamp{font-size:15px;padding:4px 10px}
+    .wrap{padding:14px 10px 40px}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}
+    .stat{min-width:calc(50% - 6px);flex:1}
+    .row button{flex:1 1 100%;padding:14px}
+    .help div{margin:16px}
+  }
 </style>
 </head>
 <body>
@@ -85,8 +105,9 @@
     <label><input type="checkbox" id="optVid" checked> Inclure les vidéos</label>
   </div>
   <button class="primary" id="btnPick">Choisir un dossier de photos</button>
+  <input type="file" id="fileIn" accept="image/*,video/*" multiple hidden>
   <div class="note" id="supportNote"></div>
-  <div class="note">Tout se passe sur ton ordinateur : aucune photo n'est envoyée sur Internet.</div>
+  <div class="note">Tout se passe sur ton appareil : aucune photo n'est envoyée sur Internet.</div>
 </section>
 
 <!-- TRI -->
@@ -127,11 +148,16 @@
 
     <h2>🗑 Photos à supprimer</h2>
     <div class="note">Clique sur une photo pour la retirer de la liste (elle sera gardée).</div>
+    <div class="row" id="mobileRow" style="display:none">
+      <button class="primary" id="btnCopy">Copier la liste des noms</button>
+      <button id="btnTxt">Télécharger la liste (.txt)</button>
+    </div>
+    <div class="note" id="mobileNote" style="display:none">Sur téléphone, le site ne peut pas supprimer les photos. Ouvre ta galerie, retrouve ces photos grâce à leur nom ou leur date, et supprime-les : le tri est déjà fait.</div>
     <div class="row">
       <button id="btnTrash">Déplacer dans un dossier « _Corbeille »</button>
       <button class="danger" id="btnDelete">Supprimer définitivement</button>
     </div>
-    <div class="note warn">« Supprimer définitivement » ne passe pas par la corbeille de l'ordinateur. Le dossier « _Corbeille » est l'option sûre : tu le vides toi-même plus tard.</div>
+    <div class="note warn pcOnly">« Supprimer définitivement » ne passe pas par la corbeille de l'ordinateur. Le dossier « _Corbeille » est l'option sûre : tu le vides toi-même plus tard.</div>
     <div class="grid" id="gridDel" style="margin-top:12px"></div>
 
     <h2>★ Favoris</h2>
@@ -166,8 +192,13 @@ const thumbURLs = [];
 
 const hasFS = 'showDirectoryPicker' in window;
 if (!hasFS) {
-  $('supportNote').innerHTML = '<span class="warn">Ton navigateur ne permet pas de supprimer des fichiers depuis une page web. Ouvre ce fichier dans <b>Google Chrome</b> ou <b>Microsoft Edge</b> sur ordinateur.</span>';
-  $('btnPick').disabled = true;
+  // Téléphone / navigateur sans accès aux dossiers : on passe par le sélecteur de fichiers classique
+  $('btnPick').textContent = 'Choisir des photos';
+  $('optSub').parentElement.style.display = 'none';
+  $('supportNote').innerHTML = '<span class="warn">📱 Sur téléphone, le site trie tes photos mais ne peut pas les supprimer : à la fin il te donne la liste de celles à supprimer dans ta galerie. Pour supprimer directement, ouvre le site dans Chrome ou Edge sur ordinateur.</span>';
+  ['btnTrash','btnDelete','btnFavMove'].forEach(i => $(i).closest('.row').style.display = 'none');
+  $('mobileRow').style.display = 'flex'; $('mobileNote').style.display = 'block';
+  document.querySelectorAll('.pcOnly').forEach(e => e.style.display = 'none');
 }
 
 function toast(msg, ms = 2500){ const t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',ms); }
@@ -182,6 +213,7 @@ function load(){ try{ return JSON.parse(localStorage.getItem(storeKey())||'{}');
 
 // ---------- Choix du dossier ----------
 $('btnPick').onclick = async () => {
+  if (!hasFS){ $('fileIn').click(); return; }
   try {
     root = await window.showDirectoryPicker({ mode: 'readwrite', id: 'triphotos' });
   } catch(e){ if(e.name!=='AbortError') toast('Accès refusé : '+e.message); return; }
@@ -193,7 +225,7 @@ $('btnPick').onclick = async () => {
       if (name.startsWith('.') || name === '_Corbeille' || name === '_Favoris') continue;
       if (h.kind === 'directory'){ if(sub) await walk(h, prefix+name+'/'); continue; }
       if (IMG.test(name) || (withVid && VID.test(name))){
-        try { const f = await h.getFile(); items.push({name, path:prefix+name, handle:h, parent:dir, size:f.size, date:f.lastModified}); } catch(e){}
+        try { const f = await h.getFile(); items.push({name, path:prefix+name, handle:h, parent:dir, size:f.size, date:f.lastModified, getFile:()=>h.getFile()}); } catch(e){}
       }
       if (items.length % 200 === 0) $('btnPick').textContent = `Lecture… ${items.length} fichiers`;
     }
@@ -201,12 +233,27 @@ $('btnPick').onclick = async () => {
   await walk(root, '');
   $('btnPick').disabled = false; $('btnPick').textContent = 'Choisir un dossier de photos';
   if (!items.length){ toast('Aucune photo trouvée dans ce dossier.'); return; }
+  startSession();
+};
+function startSession(){
   const o = $('optOrder').value;
   items.sort(o==='date'?(a,b)=>a.date-b.date : o==='dateDesc'?(a,b)=>b.date-a.date : o==='size'?(a,b)=>b.size-a.size : (a,b)=>a.path.localeCompare(b.path,'fr',{numeric:true}));
   decisions = load(); history = [];
   idx = items.findIndex(it => !decisions[it.path]); if (idx < 0) idx = items.length;
   if (Object.keys(decisions).length) toast('Progression reprise ✔');
   show('sort'); render();
+}
+// Téléphone : sélection de fichiers classique
+$('fileIn').onchange = e => {
+  const files = [...e.target.files]; e.target.value = '';
+  const withVid = $('optVid').checked, seen = {};
+  root = {name:'telephone'};
+  items = files.filter(f => IMG.test(f.name) || (withVid && VID.test(f.name) || f.type.startsWith('image/') || (withVid && f.type.startsWith('video/')))).map(f => {
+    seen[f.name] = (seen[f.name]||0)+1;
+    return {name:f.name, path: seen[f.name]>1 ? `${f.name} (${seen[f.name]})` : f.name, size:f.size, date:f.lastModified, getFile:async()=>f};
+  });
+  if (!items.length){ toast('Aucune photo sélectionnée.'); return; }
+  startSession();
 };
 
 // ---------- Affichage ----------
@@ -222,7 +269,7 @@ async function render(){
   if (curURL){ URL.revokeObjectURL(curURL); curURL=null; }
   if (idx >= items.length){ card.innerHTML = '<div class="noprev">🎉 Toutes les photos sont triées.<br><br><button class="primary" onclick="finish()">Voir le bilan</button></div>'; $('meta').textContent=''; return; }
   const it = items[idx];
-  const f = await it.handle.getFile();
+  const f = await it.getFile();
   if (VIEWABLE_IMG.test(it.name)){ curURL = URL.createObjectURL(f); card.innerHTML = `<img src="${curURL}" alt="">`; }
   else if (VID.test(it.name)){ curURL = URL.createObjectURL(f); card.innerHTML = `<video src="${curURL}" controls muted playsinline></video>`; }
   else card.innerHTML = `<div class="noprev">Aperçu impossible pour ce format<br><b>${it.name}</b></div>`;
@@ -279,7 +326,7 @@ function finish(){ show('review'); buildReview(); }
 function thumb(it, onClick){
   const d=document.createElement('div'); d.className='tile'; d.title=it.path;
   if (VIEWABLE_IMG.test(it.name)){
-    it.handle.getFile().then(f=>{ const u=URL.createObjectURL(f); thumbURLs.push(u); d.insertAdjacentHTML('afterbegin',`<img loading="lazy" src="${u}">`); });
+    it.getFile().then(f=>{ const u=URL.createObjectURL(f); thumbURLs.push(u); d.insertAdjacentHTML('afterbegin',`<img loading="lazy" src="${u}">`); });
   } else d.innerHTML=`<div class="ph">${VID.test(it.name)?'🎬 ':''}${it.name}</div>`;
   d.insertAdjacentHTML('beforeend',`<div class="x">${it.name} · ${fmtSize(it.size)}</div>`);
   if(onClick) d.onclick=()=>onClick(d);
@@ -353,8 +400,19 @@ $('btnFavMove').onclick = async ()=>{
   await runOn(list, it=>moveTo(it,'_Favoris',true), 'Copie');
 };
 
+// ---------- Téléphone : liste des photos à supprimer ----------
+function delList(){ return items.filter(i=>decisions[i.path]==='del').map(i=>`${i.name}  —  ${fmtDate(i.date)}  —  ${fmtSize(i.size)}`).join('\n'); }
+$('btnCopy').onclick = async ()=>{
+  const t = delList(); if(!t){ toast('Aucune photo à supprimer'); return; }
+  try{ await navigator.clipboard.writeText(t); toast('Liste copiée ✔'); }catch(e){ toast('Copie impossible, utilise le téléchargement'); }
+};
+$('btnTxt').onclick = ()=>{
+  const t = delList(); if(!t){ toast('Aucune photo à supprimer'); return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'})); a.download='photos-a-supprimer.txt'; a.click();
+};
+
 // ---------- Doublons exacts ----------
-async function hash(it){ const buf = await (await it.handle.getFile()).arrayBuffer(); const h = await crypto.subtle.digest('SHA-256', buf); return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+async function hash(it){ const buf = await (await it.getFile()).arrayBuffer(); const h = await crypto.subtle.digest('SHA-256', buf); return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
 $('btnDup').onclick = async ()=>{
   const bySize={}; items.forEach(i=>(bySize[i.size]??=[]).push(i));
   const cands=Object.values(bySize).filter(g=>g.length>1).flat();
