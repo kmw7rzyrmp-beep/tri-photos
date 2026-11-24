@@ -106,6 +106,8 @@
   </div>
   <button class="primary" id="btnPick">Choisir un dossier de photos</button>
   <input type="file" id="fileIn" accept="image/*,video/*" multiple hidden>
+  <button id="btnPickAll" style="display:none;width:100%;max-width:340px;padding:14px">Tout sélectionner (via Fichiers)</button>
+  <input type="file" id="fileAll" multiple hidden>
   <div class="note" id="supportNote"></div>
   <div class="note">Tout se passe sur ton appareil : aucune photo n'est envoyée sur Internet.</div>
 </section>
@@ -194,8 +196,9 @@ const hasFS = 'showDirectoryPicker' in window;
 if (!hasFS) {
   // Téléphone / navigateur sans accès aux dossiers : on passe par le sélecteur de fichiers classique
   $('btnPick').textContent = 'Choisir des photos';
+  $('btnPickAll').style.display = 'block';
   $('optSub').parentElement.style.display = 'none';
-  $('supportNote').innerHTML = '<span class="warn">📱 Sur téléphone, le site trie tes photos mais ne peut pas les supprimer : à la fin il te donne la liste de celles à supprimer dans ta galerie. Pour supprimer directement, ouvre le site dans Chrome ou Edge sur ordinateur.</span>';
+  $('supportNote').innerHTML = '<span class="warn">📱 Pour prendre toute ta galerie d\'un coup, utilise « Tout sélectionner (via Fichiers) » puis le menu ⋮ ou « Sélectionner tout » dans le dossier Photos / Images / Camera.<br><br>Sur téléphone, le site trie tes photos mais ne peut pas les supprimer : à la fin il te donne la liste de celles à supprimer dans ta galerie. Pour supprimer directement, ouvre le site dans Chrome ou Edge sur ordinateur.</span>';
   ['btnTrash','btnDelete','btnFavMove'].forEach(i => $(i).closest('.row').style.display = 'none');
   $('mobileRow').style.display = 'flex'; $('mobileNote').style.display = 'block';
   document.querySelectorAll('.pcOnly').forEach(e => e.style.display = 'none');
@@ -244,7 +247,8 @@ function startSession(){
   show('sort'); render();
 }
 // Téléphone : sélection de fichiers classique
-$('fileIn').onchange = e => {
+$('btnPickAll').onclick = () => $('fileAll').click();
+$('fileIn').onchange = $('fileAll').onchange = e => {
   const files = [...e.target.files]; e.target.value = '';
   const withVid = $('optVid').checked, seen = {};
   root = {name:'telephone'};
