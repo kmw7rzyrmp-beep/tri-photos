@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tri Photos</title>
+<style>
+  :root{--bg:#0f1115;--panel:#181b22;--line:#2a2f3a;--txt:#e9ecf1;--mut:#8b93a3;--red:#ef4444;--green:#22c55e;--gold:#f5b301;--blue:#3b82f6}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--txt);border-radius:10px;padding:10px 16px}
+  button:hover{border-color:#3d4452}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  button.danger{background:var(--red);border-color:var(--red);color:#fff}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .screen{display:none;height:100%;flex-direction:column}
+  .screen.on{display:flex}
+  /* Accueil */
+  #home{align-items:center;justify-content:center;text-align:center;padding:24px;gap:18px}
+  #home h1{margin:0;font-size:34px;letter-spacing:-.5px}
+  #home p{margin:0;color:var(--mut);max-width:520px}
+  .opts{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;color:var(--mut);font-size:14px}
+  .opts label{display:flex;gap:6px;align-items:center}
+  select{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px}
+  .note{font-size:13px;color:var(--mut);max-width:520px}
+  .warn{color:var(--gold)}
+  /* Tri */
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  header .grow{flex:1}
+  .bar{height:4px;background:var(--line);border-radius:4px;overflow:hidden;flex:1;max-width:320px}
+  .bar i{display:block;height:100%;background:var(--blue);width:0}
+  .count{color:var(--mut);font-size:13px;white-space:nowrap}
+  #stage{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:pan-y}
+  #card{max-width:100%;max-height:100%;display:flex;align-items:center;justify-content:center;transition:transform .2s,opacity .2s;position:relative}
+  #card img,#card video{max-width:calc(100vw - 32px);max-height:calc(100vh - 200px);border-radius:10px;display:block;user-select:none;-webkit-user-drag:none}
+  .noprev{padding:60px 40px;border:1px dashed var(--line);border-radius:12px;color:var(--mut)}
+  .stamp{position:absolute;top:18px;padding:6px 14px;border:3px solid;border-radius:8px;font-weight:800;font-size:22px;opacity:0;transform:rotate(-12deg)}
+  .stamp.del{left:18px;color:var(--red);border-color:var(--red)}
+  .stamp.keep{right:18px;color:var(--green);border-color:var(--green);transform:rotate(12deg)}
+  .stamp.fav{left:50%;top:auto;bottom:18px;transform:translateX(-50%);color:var(--gold);border-color:var(--gold)}
+  #meta{text-align:center;color:var(--mut);font-size:13px;padding:4px 12px;min-height:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .badge{display:inline-block;background:var(--gold);color:#000;font-weight:700;border-radius:6px;padding:0 6px;margin-left:6px;font-size:12px}
+  .actions{display:flex;gap:10px;justify-content:center;padding:12px 12px 18px;flex-wrap:wrap}
+  .actions button{min-width:110px}
+  .actions .k{opacity:.6;font-size:12px;margin-left:4px}
+  .b-del{border-color:var(--red);color:var(--red)}
+  .b-keep{border-color:var(--green);color:var(--green)}
+  .b-fav{border-color:var(--gold);color:var(--gold)}
+  /* Bilan */
+  #review{overflow:auto}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px;width:100%}
+  .stats{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;min-width:130px}
+  .stat b{display:block;font-size:24px}
+  .stat span{color:var(--mut);font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+  .tile{position:relative;aspect-ratio:1;background:var(--panel);border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid var(--red)}
+  .tile.off{border-color:var(--line);opacity:.45}
+  .tile img{width:100%;height:100%;object-fit:cover}
+  .tile .x{position:absolute;inset:auto 0 0 0;background:#000a;font-size:11px;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tile .ph{display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--mut);padding:6px;text-align:center}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0}
+  h2{margin:26px 0 6px;font-size:18px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000d;border:1px solid var(--line);padding:10px 16px;border-radius:10px;display:none;z-index:9}
+  .help{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:8}
+  .help.on{display:flex}
+  .help div{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:420px}
+  kbd{background:#000;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- ACCUEIL -->
+<section id="home" class="screen on">
+  <h1>📷 Tri Photos</h1>
+  <p>Choisis un dossier : les photos défilent une par une. Garde ou jette, puis valide tout à la fin. Rien n'est supprimé avant ta confirmation.</p>
+  <div class="opts">
+    <label><input type="checkbox" id="optSub" checked> Inclure les sous-dossiers</label>
+    <label>Ordre <select id="optOrder">
+      <option value="date">Plus anciennes d'abord</option>
+      <option value="dateDesc">Plus récentes d'abord</option>
+      <option value="size">Plus lourdes d'abord</option>
+      <option value="name">Par nom</option>
+    </select></label>
+    <label><input type="checkbox" id="optVid" checked> Inclure les vidéos</label>
+  </div>
+  <button class="primary" id="btnPick">Choisir un dossier de photos</button>
+  <div class="note" id="supportNote"></div>
+  <div class="note">Tout se passe sur ton ordinateur : aucune photo n'est envoyée sur Internet.</div>
+</section>
+
+<!-- TRI -->
+<section id="sort" class="screen">
+  <header>
+    <button id="btnHome" title="Accueil">←</button>
+    <div class="bar"><i id="prog"></i></div>
+    <span class="count" id="count"></span>
+    <span class="grow"></span>
+    <button id="btnHelp">?</button>
+    <button class="primary" id="btnFinish">Terminer</button>
+  </header>
+  <div id="stage">
+    <div id="card"></div>
+    <div class="stamp del" id="sDel">SUPPRIMER</div>
+    <div class="stamp keep" id="sKeep">GARDER</div>
+    <div class="stamp fav" id="sFav">★ FAVORI</div>
+  </div>
+  <div id="meta"></div>
+  <div class="actions">
+    <button class="b-del" id="aDel">🗑 Supprimer<span class="k">←</span></button>
+    <button id="aUndo">↶ Annuler<span class="k">Z</span></button>
+    <button class="b-fav" id="aFav">★ Favori<span class="k">↑</span></button>
+    <button class="b-keep" id="aKeep">✓ Garder<span class="k">→</span></button>
+  </div>
+</section>
+
+<!-- BILAN -->
+<section id="review" class="screen">
+  <div class="wrap">
+    <div class="row"><button id="btnBack">← Reprendre le tri</button></div>
+    <h1 style="margin:0">Bilan</h1>
+    <div class="stats" id="stats"></div>
+
+    <h2>🔁 Doublons exacts</h2>
+    <div class="note" id="dupNote">Cherche les fichiers strictement identiques (même contenu) et propose de garder un seul exemplaire.</div>
+    <div class="row"><button id="btnDup">Chercher les doublons</button></div>
+
+    <h2>🗑 Photos à supprimer</h2>
+    <div class="note">Clique sur une photo pour la retirer de la liste (elle sera gardée).</div>
+    <div class="row">
+      <button id="btnTrash">Déplacer dans un dossier « _Corbeille »</button>
+      <button class="danger" id="btnDelete">Supprimer définitivement</button>
+    </div>
+    <div class="note warn">« Supprimer définitivement » ne passe pas par la corbeille de l'ordinateur. Le dossier « _Corbeille » est l'option sûre : tu le vides toi-même plus tard.</div>
+    <div class="grid" id="gridDel" style="margin-top:12px"></div>
+
+    <h2>★ Favoris</h2>
+    <div class="row"><button id="btnFavMove">Copier les favoris dans un dossier « _Favoris »</button></div>
+    <div class="grid" id="gridFav"></div>
+  </div>
+</section>
+
+<div class="help" id="help"><div>
+  <h3 style="margin-top:0">Raccourcis</h3>
+  <p><kbd>←</kbd> Supprimer &nbsp; <kbd>→</kbd> Garder &nbsp; <kbd>↑</kbd> Favori<br>
+  <kbd>Z</kbd> Annuler &nbsp; <kbd>Espace</kbd> Passer (garder)<br><br>
+  Sur téléphone/tablette : glisse la photo à gauche ou à droite, vers le haut pour favori.</p>
+  <p class="note">Ta progression est enregistrée : si tu fermes la page et rouvres le même dossier, tu reprends où tu en étais.</p>
+  <button class="primary" onclick="help.classList.remove('on')">OK</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const IMG = /\.(jpe?g|png|gif|webp|bmp|avif|heic|heif|tiff?)$/i;
+const VID = /\.(mp4|mov|webm|m4v|3gp)$/i;
+const VIEWABLE_IMG = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
+
+let root = null;          // dossier choisi
+let items = [];           // {name, path, handle, parent, size, date, file}
+let decisions = {};       // path -> 'del' | 'keep' | 'fav'
+let history = [];         // pour annuler
+let idx = 0;
+let curURL = null;
+const thumbURLs = [];
+
+const hasFS = 'showDirectoryPicker' in window;
+if (!hasFS) {
+  $('supportNote').innerHTML = '<span class="warn">Ton navigateur ne permet pas de supprimer des fichiers depuis une page web. Ouvre ce fichier dans <b>Google Chrome</b> ou <b>Microsoft Edge</b> sur ordinateur.</span>';
+  $('btnPick').disabled = true;
+}
+
+function toast(msg, ms = 2500){ const t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',ms); }
+function fmtSize(b){ if(b>1e9)return (b/1e9).toFixed(2)+' Go'; if(b>1e6)return (b/1e6).toFixed(1)+' Mo'; return Math.round(b/1e3)+' Ko'; }
+function fmtDate(t){ return new Date(t).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'}); }
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id)); }
+
+// ---------- Sauvegarde de la progression ----------
+function storeKey(){ return 'triphotos:' + (root ? root.name : '') + ':' + items.length; }
+function save(){ try{ localStorage.setItem(storeKey(), JSON.stringify(decisions)); }catch(e){} }
+function load(){ try{ return JSON.parse(localStorage.getItem(storeKey())||'{}'); }catch(e){ return {}; } }
+
+// ---------- Choix du dossier ----------
+$('btnPick').onclick = async () => {
+  try {
+    root = await window.showDirectoryPicker({ mode: 'readwrite', id: 'triphotos' });
+  } catch(e){ if(e.name!=='AbortError') toast('Accès refusé : '+e.message); return; }
+  $('btnPick').disabled = true; $('btnPick').textContent = 'Lecture du dossier…';
+  items = [];
+  const withVid = $('optVid').checked, sub = $('optSub').checked;
+  async function walk(dir, prefix){
+    for await (const [name, h] of dir.entries()){
+      if (name.startsWith('.') || name === '_Corbeille' || name === '_Favoris') continue;
+      if (h.kind === 'directory'){ if(sub) await walk(h, prefix+name+'/'); continue; }
+      if (IMG.test(name) || (withVid && VID.test(name))){
+        try { const f = await h.getFile(); items.push({name, path:prefix+name, handle:h, parent:dir, size:f.size, date:f.lastModified}); } catch(e){}
+      }
+      if (items.length % 200 === 0) $('btnPick').textContent = `Lecture… ${items.length} fichiers`;
+    }
+  }
+  await walk(root, '');
+  $('btnPick').disabled = false; $('btnPick').textContent = 'Choisir un dossier de photos';
+  if (!items.length){ toast('Aucune photo trouvée dans ce dossier.'); return; }
+  const o = $('optOrder').value;
+  items.sort(o==='date'?(a,b)=>a.date-b.date : o==='dateDesc'?(a,b)=>b.date-a.date : o==='size'?(a,b)=>b.size-a.size : (a,b)=>a.path.localeCompare(b.path,'fr',{numeric:true}));
+  decisions = load(); history = [];
+  idx = items.findIndex(it => !decisions[it.path]); if (idx < 0) idx = items.length;
+  if (Object.keys(decisions).length) toast('Progression reprise ✔');
+  show('sort'); render();
+};
+
+// ---------- Affichage ----------
+function isBurst(i){ // photo prise à moins de 3 s d'une voisine → probablement une rafale
+  const it = items[i]; if(!it) return false;
+  return [items[i-1], items[i+1]].some(n => n && Math.abs(n.date - it.date) < 3000);
+}
+async function render(){
+  const done = Object.keys(decisions).length;
+  $('prog').style.width = (done/items.length*100)+'%';
+  $('count').textContent = `${Math.min(idx+1,items.length)} / ${items.length}`;
+  const card = $('card'); card.style.transform=''; card.style.opacity=1; setStamps(0,0);
+  if (curURL){ URL.revokeObjectURL(curURL); curURL=null; }
+  if (idx >= items.length){ card.innerHTML = '<div class="noprev">🎉 Toutes les photos sont triées.<br><br><button class="primary" onclick="finish()">Voir le bilan</button></div>'; $('meta').textContent=''; return; }
+  const it = items[idx];
+  const f = await it.handle.getFile();
+  if (VIEWABLE_IMG.test(it.name)){ curURL = URL.createObjectURL(f); card.innerHTML = `<img src="${curURL}" alt="">`; }
+  else if (VID.test(it.name)){ curURL = URL.createObjectURL(f); card.innerHTML = `<video src="${curURL}" controls muted playsinline></video>`; }
+  else card.innerHTML = `<div class="noprev">Aperçu impossible pour ce format<br><b>${it.name}</b></div>`;
+  $('meta').innerHTML = `${it.path} · ${fmtSize(it.size)} · ${fmtDate(it.date)}` + (isBurst(idx)?'<span class="badge">RAFALE</span>':'') + (decisions[it.path]?` · déjà : ${label(decisions[it.path])}`:'');
+}
+function label(d){ return d==='del'?'à supprimer':d==='fav'?'favori':'gardée'; }
+
+// ---------- Décisions ----------
+function decide(d){
+  if (idx >= items.length) return;
+  const it = items[idx];
+  history.push({idx, path:it.path, prev:decisions[it.path]});
+  decisions[it.path] = d; save();
+  const card = $('card');
+  card.style.transform = d==='del'?'translateX(-120%) rotate(-12deg)':d==='fav'?'translateY(-120%)':'translateX(120%) rotate(12deg)';
+  card.style.opacity = 0;
+  setTimeout(()=>{ idx++; while(idx<items.length && decisions[items[idx].path] && false) idx++; render(); }, 180);
+}
+function undo(){
+  const h = history.pop(); if(!h){ toast('Rien à annuler'); return; }
+  if (h.prev) decisions[h.path]=h.prev; else delete decisions[h.path];
+  save(); idx = h.idx; render();
+}
+$('aDel').onclick=()=>decide('del'); $('aKeep').onclick=()=>decide('keep'); $('aFav').onclick=()=>decide('fav'); $('aUndo').onclick=undo;
+$('btnHelp').onclick=()=>$('help').classList.add('on');
+$('btnHome').onclick=()=>{ show('home'); };
+$('btnFinish').onclick=()=>finish();
+$('btnBack').onclick=()=>{ show('sort'); render(); };
+
+document.addEventListener('keydown', e=>{
+  if (!$('sort').classList.contains('on') || e.target.tagName==='SELECT') return;
+  if (e.key==='ArrowLeft'||e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); decide('del'); }
+  else if (e.key==='ArrowRight'||e.key===' '){ e.preventDefault(); decide('keep'); }
+  else if (e.key==='ArrowUp'){ e.preventDefault(); decide('fav'); }
+  else if (e.key==='z'||e.key==='Z'){ undo(); }
+});
+
+// ---------- Glisser (souris / doigt) ----------
+function setStamps(dx,dy){
+  $('sDel').style.opacity = Math.max(0,-dx/120);
+  $('sKeep').style.opacity = Math.max(0,dx/120);
+  $('sFav').style.opacity = Math.max(0,-dy/120) * (Math.abs(dx)<60?1:0);
+}
+(()=>{
+  const st=$('stage'); let sx=0, sy=0, drag=false;
+  st.addEventListener('pointerdown',e=>{ if(e.target.tagName==='VIDEO'||e.target.tagName==='BUTTON')return; drag=true; sx=e.clientX; sy=e.clientY; $('card').style.transition='none'; });
+  window.addEventListener('pointermove',e=>{ if(!drag)return; const dx=e.clientX-sx, dy=e.clientY-sy; $('card').style.transform=`translate(${dx}px,${Math.min(0,dy)}px) rotate(${dx/20}deg)`; setStamps(dx,dy); });
+  window.addEventListener('pointerup',e=>{ if(!drag)return; drag=false; const dx=e.clientX-sx, dy=e.clientY-sy; $('card').style.transition='';
+    if (dx<-100) decide('del'); else if (dx>100) decide('keep'); else if (dy<-100 && Math.abs(dx)<60) decide('fav'); else { $('card').style.transform=''; setStamps(0,0); } });
+})();
+
+// ---------- Bilan ----------
+function finish(){ show('review'); buildReview(); }
+function thumb(it, onClick){
+  const d=document.createElement('div'); d.className='tile'; d.title=it.path;
+  if (VIEWABLE_IMG.test(it.name)){
+    it.handle.getFile().then(f=>{ const u=URL.createObjectURL(f); thumbURLs.push(u); d.insertAdjacentHTML('afterbegin',`<img loading="lazy" src="${u}">`); });
+  } else d.innerHTML=`<div class="ph">${VID.test(it.name)?'🎬 ':''}${it.name}</div>`;
+  d.insertAdjacentHTML('beforeend',`<div class="x">${it.name} · ${fmtSize(it.size)}</div>`);
+  if(onClick) d.onclick=()=>onClick(d);
+  return d;
+}
+function buildReview(){
+  thumbURLs.splice(0).forEach(u=>URL.revokeObjectURL(u));
+  const del=items.filter(i=>decisions[i.path]==='del'), fav=items.filter(i=>decisions[i.path]==='fav');
+  const kept=items.filter(i=>decisions[i.path]==='keep').length, left=items.length-Object.keys(decisions).length;
+  const gain=del.reduce((s,i)=>s+i.size,0);
+  $('stats').innerHTML=`
+    <div class="stat"><b style="color:var(--red)">${del.length}</b><span>à supprimer</span></div>
+    <div class="stat"><b style="color:var(--green)">${kept}</b><span>gardées</span></div>
+    <div class="stat"><b style="color:var(--gold)">${fav.length}</b><span>favoris</span></div>
+    <div class="stat"><b>${left}</b><span>pas encore triées</span></div>
+    <div class="stat"><b>${fmtSize(gain)}</b><span>d'espace libéré</span></div>`;
+  const g=$('gridDel'); g.innerHTML='';
+  if(!del.length) g.innerHTML='<div class="note">Aucune photo marquée pour suppression.</div>';
+  del.forEach(it=>g.appendChild(thumb(it,(el)=>{ el.classList.toggle('off'); decisions[it.path]= el.classList.contains('off')?'keep':'del'; save(); updateBtns(); })));
+  const gf=$('gridFav'); gf.innerHTML='';
+  if(!fav.length) gf.innerHTML='<div class="note">Aucun favori.</div>';
+  fav.forEach(it=>{ const t=thumb(it); t.style.borderColor='var(--gold)'; gf.appendChild(t); });
+  updateBtns();
+}
+function updateBtns(){
+  const n=items.filter(i=>decisions[i.path]==='del').length;
+  $('btnDelete').disabled=$('btnTrash').disabled=!n;
+  $('btnDelete').textContent=`Supprimer définitivement (${n})`;
+  $('btnTrash').textContent=`Déplacer dans « _Corbeille » (${n})`;
+}
+
+// Déplace/copie un fichier vers un sous-dossier du dossier choisi
+async function moveTo(it, folderName, keepOriginal){
+  const dest = await root.getDirectoryHandle(folderName,{create:true});
+  let name = it.name;
+  // éviter d'écraser un fichier du même nom
+  for (let n=1;;n++){ try{ await dest.getFileHandle(name); name = it.name.replace(/(\.[^.]+)?$/, `_${n}$1`); }catch(e){ break; } }
+  if (!keepOriginal && it.handle.move){ try{ await it.handle.move(dest, name); return; }catch(e){} }
+  const f = await it.handle.getFile();
+  const nh = await dest.getFileHandle(name,{create:true});
+  const w = await nh.createWritable(); await w.write(f); await w.close();
+  if (!keepOriginal) await it.parent.removeEntry(it.name);
+}
+async function ensurePerm(){
+  if ((await root.queryPermission({mode:'readwrite'}))==='granted') return true;
+  return (await root.requestPermission({mode:'readwrite'}))==='granted';
+}
+async function runOn(list, fn, verb){
+  if(!await ensurePerm()){ toast('Permission refusée'); return; }
+  let ok=0, fail=0;
+  for (const it of list){ try{ await fn(it); ok++; }catch(e){ fail++; console.error(it.path,e); } toast(`${verb}… ${ok+fail}/${list.length}`, 60000); }
+  toast(`${ok} fichier(s) traité(s)` + (fail?` · ${fail} erreur(s)`:'' ), 4000);
+  return ok;
+}
+function removeDone(list){ const s=new Set(list.map(i=>i.path)); items=items.filter(i=>!s.has(i.path)); list.forEach(i=>delete decisions[i.path]); save(); idx=Math.min(idx,items.length); buildReview(); }
+
+$('btnTrash').onclick = async ()=>{
+  const list=items.filter(i=>decisions[i.path]==='del');
+  if(!confirm(`Déplacer ${list.length} photo(s) dans le dossier « _Corbeille » ?`)) return;
+  await runOn(list, it=>moveTo(it,'_Corbeille',false), 'Déplacement'); removeDone(list);
+};
+$('btnDelete').onclick = async ()=>{
+  const list=items.filter(i=>decisions[i.path]==='del');
+  const size=fmtSize(list.reduce((s,i)=>s+i.size,0));
+  if(!confirm(`Supprimer DÉFINITIVEMENT ${list.length} photo(s) (${size}) ?\n\nElles n'iront PAS dans la corbeille de l'ordinateur. Impossible d'annuler.`)) return;
+  await runOn(list, it=>it.parent.removeEntry(it.name), 'Suppression'); removeDone(list);
+};
+$('btnFavMove').onclick = async ()=>{
+  const list=items.filter(i=>decisions[i.path]==='fav');
+  if(!list.length){ toast('Aucun favori'); return; }
+  await runOn(list, it=>moveTo(it,'_Favoris',true), 'Copie');
+};
+
+// ---------- Doublons exacts ----------
+async function hash(it){ const buf = await (await it.handle.getFile()).arrayBuffer(); const h = await crypto.subtle.digest('SHA-256', buf); return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+$('btnDup').onclick = async ()=>{
+  const bySize={}; items.forEach(i=>(bySize[i.size]??=[]).push(i));
+  const cands=Object.values(bySize).filter(g=>g.length>1).flat();
+  if(!cands.length){ $('dupNote').textContent='Aucun doublon trouvé ✔'; return; }
+  const byHash={}; let n=0;
+  for(const it of cands){ try{ (byHash[await hash(it)] ??= []).push(it); }catch(e){} $('dupNote').textContent=`Analyse… ${++n}/${cands.length}`; }
+  const groups=Object.values(byHash).filter(g=>g.length>1);
+  let marked=0;
+  groups.forEach(g=>{ g.sort((a,b)=>a.path.length-b.path.length||a.date-b.date); g.slice(1).forEach(it=>{ if(decisions[it.path]!=='fav'){ decisions[it.path]='del'; marked++; } }); });
+  save();
+  $('dupNote').textContent = groups.length ? `${groups.length} groupe(s) de doublons : ${marked} copie(s) ajoutée(s) à la liste « à supprimer » (un exemplaire de chaque est gardé).` : 'Aucun doublon trouvé ✔';
+  buildReview();
+};
+</script>
+</body>
+</html>
